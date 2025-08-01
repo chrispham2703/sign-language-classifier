@@ -4,8 +4,14 @@ from tensorflow.keras.callbacks import EarlyStopping
 from src.preprocess import preprocess
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import ModelCheckpoint
+
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test, label_encoder = preprocess(limit_per_class=500)
+    print("CLASS LABELS:", list(label_encoder.classes_))
+    import json
+    with open("models/class_labels.json", "w") as f:
+        json.dump(list(label_encoder.classes_), f)
 
     # Reshape images to (64, 64, 1)
     X_train = X_train.reshape(-1, 64, 64, 1)
@@ -48,12 +54,33 @@ if __name__ == "__main__":
 
     # Train model
     early_stop = EarlyStopping(patience=3, restore_best_weights=True)
+    model_checkpoint = ModelCheckpoint(
+        filepath="models/asl_model.h5",
+        monitor="val_accuracy",
+        save_best_only=True,
+        verbose=1
+    )
 
-    model.fit(datagen.flow(X_train, y_train, batch_size=64),
-          epochs=30,
-          validation_data=(X_test, y_test),
-          callbacks=[early_stop, model_checkpoint])
-
+    model.fit(
+        datagen.flow(X_train, y_train, batch_size=64),
+        epochs=30,
+        validation_data=(X_test, y_test),
+        callbacks=[early_stop, model_checkpoint]
+    )
 
     model.save("asl_model.h5")
     print(" Model saved to asl_model.h5")
+
+from tensorflow.keras.models import load_model
+import numpy as np
+
+model = load_model("models/asl_model.h5")
+
+print("Class labels from label_encoder:", list(label_encoder.classes_))
+
+# Test predictions on 10 training samples
+for i in range(10):
+    img = X_train[i]  # shape (64,64,1)
+    label = np.argmax(y_train[i])
+    pred = np.argmax(model.predict(img.reshape(1,64,64,1)))
+    print(f"Sample {i}: True: {label_encoder.classes_[label]}, Predicted: {label_encoder.classes_[pred]}")

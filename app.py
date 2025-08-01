@@ -6,10 +6,12 @@ from src.preprocess import IMG_SIZE
 from tensorflow.keras.preprocessing.image import img_to_array
 
 # Load trained model
-model = load_model("asl_model.h5")
+model = load_model("models/asl_model.h5")
 
-# Map numeric class back to letter (same order as training)
-class_labels = sorted(list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+import json
+with open("models/class_labels.json") as f:
+    class_labels = json.load(f)
+
 
 # Streamlit UI
 st.title("🤟 Real-Time ASL Sign Recognition")
@@ -21,7 +23,7 @@ if cap:
     st.sidebar.title("Instructions")
     st.sidebar.write("""
     - Click 'Start Camera'
-    - Show a hand sign from A-Z
+    - Show a hand sign from A-Z, or 'del', 'nothing', 'space'
     - Make sure lighting is good and hand is centered
     """)
 
@@ -45,12 +47,13 @@ while run and cap is not None and cap.isOpened():
     resized = cv2.resize(gray, (IMG_SIZE, IMG_SIZE))
     norm_img = resized / 255.0
     input_img = norm_img.reshape(1, IMG_SIZE, IMG_SIZE, 1)
+    # st.image(norm_img, caption="Model input (grayscale 64x64)", channels="GRAY")
 
     # Predict
     prediction = model.predict(input_img)
-    # st.write("Prediction raw:", prediction)
-    # st.write("Prediction shape:", prediction.shape)
-    # st.write("Class labels:", class_labels)
+    st.write("Prediction raw:", prediction)
+    st.write("Prediction shape:", prediction.shape)
+    st.write("Class labels:", class_labels)
     confidence = np.max(prediction)
     st.write(f"Confidence: {confidence:.2f}")
 
